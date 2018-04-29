@@ -45,7 +45,7 @@ namespace SignalR_Drag
 		{
 			
 			// aapt resource value: 0x7f040001
-			public const int draggableView = 2130968577;
+			public const int linearLayout1 = 2130968577;
 			
 			// aapt resource value: 0x7f040000
 			public const int root = 2130968576;

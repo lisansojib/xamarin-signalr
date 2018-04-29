@@ -1,70 +1,93 @@
 ﻿using Android.App;
 using Android.Widget;
 using Android.OS;
-using Android.Views;
 using Microsoft.AspNet.SignalR.Client;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Android.Views;
 
 namespace SignalR_Drag
 {
     [Activity(Label = "SignalR_Drag", MainLauncher = true)]
     public class MainActivity : Activity
     {
-        private FrameLayout mRoot;
-        private View draggableView;
+        private LinearLayout mRoot;
+
+        HubConnection hubConnection;
         private IHubProxy mhubProxy;
-        private float XInit = 0;
-        private float YInit = 0;
+        TextView textView;
+
         protected async override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             // Set our view from the "main" layout resource  
             SetContentView(Resource.Layout.Main);
-            mRoot = FindViewById<FrameLayout>(Resource.Id.root);
-            draggableView = FindViewById(Resource.Id.draggableView);
-            draggableView.Touch += DraggableView_Touch;
-            var querystringData = new Dictionary<string, string>
-            {
-                { "access_token", "B58m183YH2g7CY5bzj_yFwiL9e8Z7It1V_dA53ZWc4h84Te-wAPyKCgRvjF9NLO3QHD2B-t4LzBVBJPHLtLaxZw4UuOTshH3bgEdt4vZSsUCNwdYcLJcUEqE_5uRrsLOGg3Di2m7kGyJKp5p5Edymyaig7SfXyH85UkAFKhdzs1Zra35KsfAq_WQXDnUjz9K2VMWmxLE71dHHzvgLds-yvNb7ITXlE_TmQR4JQSYV0zL7ypJfmUEADb0r3PxqUzyz31eDfFsavq5fBY7k7Trzkkw5notp02hRrCMPtwoFB0vdct6fF9k9CCkep8h8mEEXCX0kWNQXv3oRilJX9jyc9CgAh5Z0IMeM6QKhVo5R7gI0Tc69itpjBscGfXuN6ljPvmcGxC7oGtEElMWRL3cxhrA-Hwmq-ga53RmkUlNs8TzvtZ9tyoH5d6ETCRsQfOeLBvD0HG3PAJZ76z0PIxzjQ4Z_k0dWv1Xb1Awp-Vf_TTyJDywpgTsUp3-Pl2x8FtM28MOHxunRqCLXGhSFWNJhQ" }
-            };
-            HubConnection hubConnection = new HubConnection("http://192.168.43.62", querystringData);
-            mhubProxy = hubConnection.CreateHubProxy("ChatHub");
-            try
-            {
-                await hubConnection.Start();
-            }
-            catch (Exception ex)
-            {
-                //Catch handle Errors.   
-            }
+            mRoot = FindViewById<LinearLayout>(Resource.Id.root);
+
+            LinearLayout ll = FindViewById<LinearLayout>(Resource.Id.linearLayout1);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.FillParent, ViewGroup.LayoutParams.WrapContent);
+
+            TextView tv = new TextView(this) { Text = "Hello" };
+            tv.LayoutParameters = lp;
+            ll.AddView(tv);
+
+            TextView tv2 = new TextView(this) { Text = "Hello" };
+            tv2.LayoutParameters = lp;
+            ll.AddView(tv2);
+
+            var that = this;
+
+            await ConnectToSignalRServer();
 
             mhubProxy.On<ContactMessageViewModel>("newMessage", (message) =>
             {
-                var v = message;
+                var v = message.MessageContent;
             });
         }
-        private async void DraggableView_Touch(object sender, View.TouchEventArgs e)
+
+        private async Task<bool> ConnectToSignalRServer()
         {
-            float x = e.Event.RawX;
-            float y = e.Event.RawY;
-            View touchedView = sender as View;
-            switch (e.Event.Action)
+            bool connected = false;
+            try
             {
-                case MotionEventActions.Down:
-                    XInit = touchedView.GetX() - x;
-                    YInit = touchedView.GetY() - y;
-                    break;
-                case MotionEventActions.Move:
-                    touchedView.Animate().X(e.Event.RawX + XInit).Y(e.Event.RawY + YInit).SetDuration(0).Start();
-                    break;
-                default:
-                    break;
+                var querystringData = new Dictionary<string, string>
+                {
+                    { "access_token", "_Mo_T4X3v2kA5BESwSCDCnI0ZqMAppMEcGaMju6RrNX5WeKmnYn0UB1WdAt8kAaZ64AD8NTwrsJj3bgD64y0mr70sOfloEPJNb2AprHjNIsYvirKkBiZ0Bek1IjmTg0bcnE1u4Wt_gjMu2xaGAO2XYJoCCHEMUjUYCDEF25R7yV0EroNiRWftR2kxP0m_3oTliHnX50HnWFHfjJGbKoLuOLaJpl3WJs7k5Gcuxf51RSyP50Vum910NiCEYDBLfSL82u_gTqqE-LQETNStmTPq_kM2b44Huo9kdVckxrjbfbbMpQENFL0teS-s6Y4zSLn98q1IdvhUp7smQUMx_KDDKGWWJuCUo056h0w6R5--WOAK5FS6I34XV5q2NqVSD2n8dpx42APHDrhiGHO_TCUZ8t15XGgYfFGMwFFydzscvjdzuj8D3Ovx2RQVD4DFMX3vLCf2FjOCjUr0q-Ne6R0GSBZhkM8FGDEGQd1MGpKUPwN-OOE_uEelWUOUczHRVUeBjRgdmnftfXFp31vhAyQ-A" }
+                };
+
+                hubConnection = new HubConnection("http://192.168.0.8", querystringData);
+                mhubProxy = hubConnection.CreateHubProxy("ChatHub");
+                await hubConnection.Start();
+
+                //See @Oran Dennison's comment on @KingOfHypocrites's answer
+                if (hubConnection.State == ConnectionState.Connected)
+                {
+                    connected = true;
+                    hubConnection.Closed += Connection_Closed;
+                }                
+
+                return connected;
             }
-            mRoot.Invalidate();
-            //await mhubProxy.Invoke("DragView", new object[] {
-            //    e.Event.RawX, XInit, e.Event.RawY, YInit
-            //});
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error");
+                return false;
+            }
+        }
+
+        private async void Connection_Closed()
+        {
+            // specify a retry duration
+            TimeSpan retryDuration = TimeSpan.FromSeconds(30);
+
+            while (DateTime.UtcNow < DateTime.UtcNow.Add(retryDuration))
+            {
+                bool connected = await ConnectToSignalRServer();
+                if (connected)
+                    return;
+            }
+            Console.WriteLine("Connection closed");
         }
     }
 
